@@ -2,13 +2,12 @@ import json
 from urllib.parse import urlparse
 
 from django.contrib.auth import logout
-from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import FormView, View
-from jwcrypto import jwt
+from jwcrypto import jwk, jwt
 from jwcrypto.common import JWException
 from jwcrypto.jws import InvalidJWSObject
 from jwcrypto.jwt import JWTExpired
@@ -31,7 +30,6 @@ from ..models import (
     get_refresh_token_model,
 )
 from ..settings import oauth2_settings
-from ..utils import jwk_from_pem
 from .mixins import OAuthLibMixin, OIDCLogoutOnlyMixin, OIDCOnlyMixin
 
 
@@ -116,7 +114,7 @@ class JwksInfoView(OIDCOnlyMixin, View):
                 oauth2_settings.OIDC_RSA_PRIVATE_KEY,
                 *oauth2_settings.OIDC_RSA_PRIVATE_KEYS_INACTIVE,
             ]:
-                key = jwk_from_pem(pem)
+                key = jwk.JWK.from_pem(pem.encode("utf8"))
                 data = {"alg": "RS256", "use": "sig", "kid": key.thumbprint()}
                 data.update(json.loads(key.export_public()))
                 keys.append(data)
@@ -363,13 +361,12 @@ class RPInitiatedLogoutView(OIDCLogoutOnlyMixin, FormView):
             return self.error_response(error)
 
     def do_logout(self, application=None, post_logout_redirect_uri=None, state=None, token_user=None):
-        user = token_user or self.request.user
-        # Delete Access Tokens if a user was found
-        if oauth2_settings.OIDC_RP_INITIATED_LOGOUT_DELETE_TOKENS and not isinstance(user, AnonymousUser):
+        # Delete Access Tokens
+        if oauth2_settings.OIDC_RP_INITIATED_LOGOUT_DELETE_TOKENS:
             AccessToken = get_access_token_model()
             RefreshToken = get_refresh_token_model()
             access_tokens_to_delete = AccessToken.objects.filter(
-                user=user,
+                user=token_user or self.request.user,
                 application__client_type__in=self.token_deletion_client_types,
                 application__authorization_grant_type__in=self.token_deletion_grant_types,
             )

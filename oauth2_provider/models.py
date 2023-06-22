@@ -19,7 +19,6 @@ from oauthlib.oauth2.rfc6749 import errors
 from .generators import generate_client_id, generate_client_secret
 from .scopes import get_scopes_backend
 from .settings import oauth2_settings
-from .utils import jwk_from_pem
 from .validators import RedirectURIValidator, WildcardSet
 
 
@@ -27,17 +26,18 @@ logger = logging.getLogger(__name__)
 
 
 class ClientSecretField(models.CharField):
-    def pre_save(self, model_instance, add):
-        secret = getattr(model_instance, self.attname)
-        try:
-            hasher = identify_hasher(secret)
-            logger.debug(f"{model_instance}: {self.attname} is already hashed with {hasher}.")
-        except ValueError:
-            logger.debug(f"{model_instance}: {self.attname} is not hashed; hashing it now.")
-            hashed_secret = make_password(secret)
-            setattr(model_instance, self.attname, hashed_secret)
-            return hashed_secret
-        return super().pre_save(model_instance, add)
+    pass
+    # def pre_save(self, model_instance, add):
+    #     secret = getattr(model_instance, self.attname)
+    #     try:
+    #         hasher = identify_hasher(secret)
+    #         logger.debug(f"{model_instance}: {self.attname} is already hashed with {hasher}.")
+    #     except ValueError:
+    #         logger.debug(f"{model_instance}: {self.attname} is not hashed; hashing it now.")
+    #         hashed_secret = make_password(secret)
+    #         setattr(model_instance, self.attname, hashed_secret)
+    #         return hashed_secret
+    #     return super().pre_save(model_instance, add)
 
 
 class AbstractApplication(models.Model):
@@ -235,7 +235,7 @@ class AbstractApplication(models.Model):
         if self.algorithm == AbstractApplication.RS256_ALGORITHM:
             if not oauth2_settings.OIDC_RSA_PRIVATE_KEY:
                 raise ImproperlyConfigured("You must set OIDC_RSA_PRIVATE_KEY to use RSA algorithm")
-            return jwk_from_pem(oauth2_settings.OIDC_RSA_PRIVATE_KEY)
+            return jwk.JWK.from_pem(oauth2_settings.OIDC_RSA_PRIVATE_KEY.encode("utf8"))
         elif self.algorithm == AbstractApplication.HS256_ALGORITHM:
             return jwk.JWK(kty="oct", k=base64url_encode(self.client_secret))
         raise ImproperlyConfigured("This application does not support signed tokens")

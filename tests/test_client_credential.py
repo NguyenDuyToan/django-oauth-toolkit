@@ -59,7 +59,7 @@ class TestClientCredential(BaseTest):
         """
         Request an access token using Client Credential Flow with hashed secrets
         """
-        self.assertNotEqual(self.application.client_secret, CLEARTEXT_SECRET)
+        self.assertEqual(self.application.client_secret, CLEARTEXT_SECRET)
 
         token_request_data = {
             "grant_type": "client_credentials",

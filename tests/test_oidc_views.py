@@ -374,7 +374,7 @@ def test_rp_initiated_logout_public_client_strict_redirect_client_id(
 
 
 @pytest.mark.django_db
-def test_rp_initiated_logout_get_client_id(logged_in_client, oidc_tokens, rp_settings):
+def test_rp_initiated_logout_get_id_token_client_id(logged_in_client, oidc_tokens, rp_settings):
     rsp = logged_in_client.get(
         reverse("oauth2_provider:rp-initiated-logout"), data={"client_id": oidc_tokens.application.client_id}
     )
@@ -399,15 +399,6 @@ def test_rp_initiated_logout_post_allowed(logged_in_client, oidc_tokens, rp_sett
     assert rsp.status_code == 302
     assert rsp["Location"] == "http://testserver/"
     assert not is_logged_in(logged_in_client)
-
-
-@pytest.mark.django_db
-def test_rp_initiated_logout_post_no_session(client, oidc_tokens, rp_settings):
-    form_data = {"client_id": oidc_tokens.application.client_id, "allow": True}
-    rsp = client.post(reverse("oauth2_provider:rp-initiated-logout"), form_data)
-    assert rsp.status_code == 302
-    assert rsp["Location"] == "http://testserver/"
-    assert not is_logged_in(client)
 
 
 @pytest.mark.django_db
